@@ -1,6 +1,7 @@
 library(ggplot2)
-#setwd("/Users/kaylinwalker/R/textmining_seinfeld")
-setwd("/Users/kwalker/git_projects/textmining_seinfeld")
+library(reshape2)
+setwd("/Users/kaylinwalker/R/textmining_seinfeld")
+#setwd("/Users/kwalker/git_projects/textmining_seinfeld")
 
 all.text <- read.csv("data/seinfeld_scripts_enhanced.csv", stringsAsFactors=F)
 all.text$date <- as.Date(all.text$date)
@@ -65,7 +66,37 @@ ggplot(g, aes(Larry, Share*100, group=Larry)) + geom_boxplot() + labs(title="Doe
     xlab("Episode Written by Larry David") + ylab("Share of Words Spoken (%)")
 
 
+# do females speak more in episodes written by women?
+female_writers <- c("Jennifer Crittenden", "Carol Leifer", "Elaine Pope", "Marjorie Gross")
+for(u in seq_along(all.text$words)){
+     if(grepl(paste(paste("Written by", female_writers), collapse="|"), all.text$writers[u])) {
+          all.text$Writer.Female[u] <- "Female"
+     } else if(grepl(paste(female_writers, collapse="|"), all.text$writers[u])) { 
+          all.text$Writer.Female[u] <- "Mixed"
+     } else { all.text$Writer.Female[u] <- "Male" }
+}
+f_ep <- merge(genderByEp, unique(all.text[,c(4,16)]), by="num", all.x=TRUE)
+ggplot(f_ep[f_ep$gender %in% "F", ], aes(Writer.Female, Share, group=Writer.Female)) + geom_boxplot()
+t.test(Share ~ Writer.Female, f_ep[f_ep$gender %in% "F",]) # slightly 0.07
 
+
+############################################################
+############################################################
+#### Now onto word content instead of count
+source("scripts/LL_function.R")
 speaker <- read.csv("data/seinfeld_tdm_speaker.csv", stringsAsFactors=F)
+LL.df <- NULL
+for(u in 2:8){
+     LL.temp <- LL(speaker[,1:8], column.number=u, threshold=6.6)
+     LL.df <- rbind(LL.df, LL.temp)
+}
+#write.csv(LL.df, "seinfeld_LL_speakers.csv", row.names=F)
+
 ep <- read.csv("data/seinfeld_tdm_episode.csv", stringsAsFactors=F)
+LL.df.ep <- NULL
+for(u in 151:176){
+     LL.temp <- LL(ep[,c(1,3:178)], column.number=u, threshold=6.6)
+     LL.df.ep <- rbind(LL.df.ep, LL.temp)
+}
+#write.csv(LL.df.ep, "seinfeld_LL_episodes.csv", row.names=F)
 
