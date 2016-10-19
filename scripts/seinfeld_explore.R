@@ -41,62 +41,22 @@ genderExp <- dcast(genderByEp, num ~ gender)
 
 
 ############################################################
-#all.text$group <- "-"
-#ggplot(all.text, aes(group, word.count)) + geom_bar(stat="identity", aes(fill=Larry)) + 
-#    coord_flip() + facet_grid(season ~ .) + scale_fill_brewer(palette="Paired")
-
-# does Jerry talk more in episodes he wrote? NO
-j <- aggregate(word.count ~ num + speaker, all.text[all.text$speaker %in% "JERRY", ], sum)
-all <- aggregate(word.count ~ num, all.text, sum)    
-j <- merge(j, all, by="num", all.x=TRUE)
-j$Share <- j$word.count.x/j$word.count.y
-larry <- unique(all.text[ , c(4,6,7,8,9,14,15)])
-j <- merge(j, larry[,c(1,6)], by="num", all.x=TRUE)
-t.test(Share ~ Jerry, j) # not really significant
-ggplot(j, aes(Jerry, Share*100, group=Jerry)) + geom_boxplot() + labs(title="Does Jerry Talk More in Episodes He Wrote?") +
-    xlab("Episode Written by Jerry Seinfeld") + ylab("Share of Words Spoken (%)")
-
-# does George talk more in episodes Larry David wrote? YES
-g <- aggregate(word.count ~ num + speaker, all.text[all.text$speaker %in% "GEORGE", ], sum)
-g <- merge(g, all, by="num", all.x=TRUE)
-g$Share <- g$word.count.x/g$word.count.y
-g <- merge(g, larry[,c(1,7)], by="num", all.x=TRUE)
-t.test(Share ~ Larry, g) # significant
-ggplot(g, aes(Larry, Share*100, group=Larry)) + geom_boxplot() + labs(title="Does George Talk More in Episodes Larry David Wrote?") +
-    xlab("Episode Written by Larry David") + ylab("Share of Words Spoken (%)")
-
-
-# do females speak more in episodes written by women?
-female_writers <- c("Jennifer Crittenden", "Carol Leifer", "Elaine Pope", "Marjorie Gross")
-for(u in seq_along(all.text$words)){
-     if(grepl(paste(paste("Written by", female_writers), collapse="|"), all.text$writers[u])) {
-          all.text$Writer.Female[u] <- "Female"
-     } else if(grepl(paste(female_writers, collapse="|"), all.text$writers[u])) { 
-          all.text$Writer.Female[u] <- "Mixed"
-     } else { all.text$Writer.Female[u] <- "Male" }
-}
-f_ep <- merge(genderByEp, unique(all.text[,c(4,16)]), by="num", all.x=TRUE)
-ggplot(f_ep[f_ep$gender %in% "F", ], aes(Writer.Female, Share, group=Writer.Female)) + geom_boxplot()
-t.test(Share ~ Writer.Female, f_ep[f_ep$gender %in% "F",]) # slightly 0.07
-
-
-############################################################
 ############################################################
 #### Now onto word content instead of count
-source("scripts/LL_function.R")
-speaker <- read.csv("data/seinfeld_tdm_speaker.csv", stringsAsFactors=F)
-LL.df <- NULL
-for(u in 2:8){
-     LL.temp <- LL(speaker[,1:8], column.number=u, threshold=6.6)
-     LL.df <- rbind(LL.df, LL.temp)
-}
-#write.csv(LL.df, "seinfeld_LL_speakers.csv", row.names=F)
+LL <- read.csv("data/seinfeld_LL_episodes.csv", stringsAsFactors=F)
+LL$name2 <- gsub("\\.", " ", LL$name)
+LL$num <- sapply(LL$name2, function(x) as.numeric(gsub("X", "", strsplit(x, " ")[[1]][1])))
 
-ep <- read.csv("data/seinfeld_tdm_episode.csv", stringsAsFactors=F)
-LL.df.ep <- NULL
-for(u in 151:176){
-     LL.temp <- LL(ep[,c(1,3:178)], column.number=u, threshold=6.6)
-     LL.df.ep <- rbind(LL.df.ep, LL.temp)
+for(j in seq_along(LL$o1)) { 
+     LL$match[j] <- grepl(LL$word[j], tolower(LL$name2[j])) 
 }
-#write.csv(LL.df.ep, "seinfeld_LL_episodes.csv", row.names=F)
+# best word per episode
+perEp <- NULL
+for(j in unique(LL$num)){
+     sub <- LL[LL$num %in% j, ]
+     sub <- sub[order(-sub$chisq), ]
+     row <- sub[1,]
+     perEp <- rbind(perEp, row)
+}
+#write.csv(perEp, "seinfeld_top_perEp.csv", row.names=F)
 
